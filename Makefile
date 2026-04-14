@@ -1,22 +1,38 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -Wextra -std=c99 -I easyflash/inc -I inc
+LDFLAGS =
 
-TARGET = kvs_test
-SRCS = kvs_linux.c main.c
-OBJS = $(SRCS:.c=.o)
+EF_SRC = easyflash/src
+EF_PORT = easyflash/port
 
-.PHONY: all clean run
+EF_OBJS = \
+	$(EF_SRC)/easyflash.o \
+	$(EF_SRC)/ef_env.o \
+	$(EF_SRC)/ef_env_legacy.o \
+	$(EF_SRC)/ef_env_legacy_wl.o \
+	$(EF_SRC)/ef_iap.o \
+	$(EF_SRC)/ef_log.o \
+	$(EF_PORT)/ef_utils.o \
+	$(EF_PORT)/ef_port.o
 
-all: $(TARGET)
+APP = easyflash_test
+APP_OBJ = easyflash_test.o
+APP_DEPS = easyflash/inc/ef_linux.h
 
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET)
+.PHONY: all clean
 
-%.o: %.c
+all: $(APP)
+
+$(EF_SRC)/%.o: $(EF_SRC)/%.c $(wildcard $(EF_SRC)/*.h)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-run:
-	./$(TARGET)
+$(EF_PORT)/%.o: $(EF_PORT)/%.c $(wildcard $(EF_PORT)/*.h)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(APP): $(APP_OBJ) $(EF_OBJS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(APP_OBJ): $(APP_DEPS)
 
 clean:
-	rm -f $(OBJS) $(TARGET) $(KVS_BIN_FILE)
+	rm -f $(EF_OBJS) $(APP_OBJ) $(APP)
