@@ -3,13 +3,6 @@
 #include "easyflash/inc/ef_linux.h"
 
 int main() {
-    if (ef_linux_init("kvs_data.bin") != 0) {
-        fprintf(stderr, "Failed to init flash\n");
-        return -1;
-    }
-
-    ef_linux_set_offset(0x3E000);
-
     EfErrCode ret = easyflash_init();
     if (ret != EF_NO_ERR) {
         fprintf(stderr, "EasyFlash init failed: %d\n", ret);
@@ -27,8 +20,6 @@ int main() {
 
     const char *test_keys[] = {
         "/srf/pair_info",
-        "/srf/wifi_info",
-        "/boot_times",
         NULL
     };
 
@@ -52,7 +43,5 @@ int main() {
             printf("Key '%s': (not found)\n", test_keys[i]);
         }
     }
-
-    ef_linux_deinit();
     return 0;
 }

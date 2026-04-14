@@ -28,6 +28,7 @@
 
 #ifndef EF_CFG_H_
 #define EF_CFG_H_
+#include <flash_map.h>
 
 /* using ENV function, default is NG (Next Generation) mode start from V4.0 */
 #define EF_USING_ENV
@@ -39,8 +40,8 @@
  * ENV version number defined by user.
  * Please change it when your firmware add a new ENV to default_env_set.
  */
-#define EF_ENV_VER_NUM  (0)
-  
+#define EF_ENV_VER_NUM  (0)           /* @note you must define it for a value, such as 0 */
+ 
 /* MCU Endian Configuration, default is Little Endian Order. */
 /* #define EF_BIG_ENDIAN  */         
 
@@ -53,11 +54,11 @@
 /* #define EF_USING_LOG */
 
 /* The minimum size of flash erasure. May be a flash sector size. */
-#define EF_ERASE_MIN_SIZE         (0x1000)
+#define EF_ERASE_MIN_SIZE         (0x1000)/* @note you must define it for a value */
 
 /* the flash write granularity, unit: bit
  * only support 1(nor flash)/ 8(stm32f4)/ 32(stm32f1) */
-#define EF_WRITE_GRAN             (1)
+#define EF_WRITE_GRAN             (1)/* @note you must define it for a value */
 
 /*
  *
@@ -72,19 +73,24 @@
  *
  * @note all area sizes must be aligned with EF_ERASE_MIN_SIZE
  *
- * The EasyFlash add the NG (Next Generation) mode start from V4.0.
+ * The EasyFlash add the NG (Next Generation) mode start from V4.0. All old mode before V4.0, called LEGACY mode.
+ *
+ * - NG (Next Generation) mode is default mode from V4.0. It's easy to settings, only defined the ENV_AREA_SIZE.
+ * - The LEGACY mode has been DEPRECATED. It is NOT RECOMMENDED to continue using.
+ *   Beacuse it will use ram to buffer the ENV and spend more flash erase times.
+ *   If you want use it please using the V3.X version.
  */
 
-/* Linux 模拟 flash 地址 */
-#define EF_START_ADDR             0
+/* backup area start address */
+#define EF_START_ADDR             FLASH_KVS_ENV_ADDR /* @note you must define it for a value 2MBflash */
 
-/* ENV area size */
-#define ENV_AREA_SIZE             (8 * 1024)
+/* ENV area size. It's at least one empty sector for GC. So it's definition must more then or equal 2 flash sector size. */
+#define ENV_AREA_SIZE             FLASH_KVS_ENV_SIZE /* @note you must define it for a value if you used ENV */
 
 /* saved log area size */
-#define LOG_AREA_SIZE             (0x1000)
+#define LOG_AREA_SIZE             (0x1000)/* @note you must define it for a value if you used log */
 
 /* print debug information of flash */
-#define PRINT_DEBUG
+// #define PRINT_DEBUG
 
 #endif /* EF_CFG_H_ */

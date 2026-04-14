@@ -29,7 +29,7 @@
 #ifndef EF_DEF_H_
 #define EF_DEF_H_
 
-/* Linux port: no sdk_config needed */
+#include <sdk_config.h>
 
 #ifdef __cplusplus
 extern "C" {
