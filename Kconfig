@@ -1,0 +1,86 @@
+# KVS Linux Configuration
+
+mainmenu "KVS Linux Configuration"
+
+config FLASH_SIZE
+    string "Flash Size"
+    default "256K"
+    help
+      Select the target flash size. This determines the overall
+      memory layout including KVS and user ENV regions.
+
+      Supported values: 256K, 512K, 1M
+
+      256K - GX831X default, 8KB KVS + 64KB user ENV
+      512K - 8KB KVS + 64KB user ENV
+      1M   - 8KB KVS + 64KB user ENV
+
+config FLASH_SIZE_KB
+    int
+    default 256 if FLASH_SIZE = "256K"
+    default 512 if FLASH_SIZE = "512K"
+    default 1024 if FLASH_SIZE = "1M"
+    default 256
+
+config USER_ENV_BANK_NUM
+    int "User ENV bank number (4KB each)"
+    range 0 16
+    default 0
+    help
+      Number of 4KB banks allocated for user ENV area.
+      Total user ENV size = USER_ENV_BANK_NUM * 4KB.
+
+config KVS_ENV_BANK_NUM
+    int "KVS ENV bank number (4KB each)"
+    range 2 8
+    default 2
+    help
+      Number of 4KB banks allocated for KVS ENV area.
+      Total KVS ENV size = KVS_ENV_BANK_NUM * 4KB.
+      Minimum 2 banks required for GC (garbage collection).
+
+choice
+    prompt "Flash write granularity"
+    default EF_WRITE_GRAN_1
+
+config EF_WRITE_GRAN_1
+    bool "1 bit (nor flash)"
+    help
+      Use 1-bit write granularity. This is the typical setting
+      for external NOR flash devices.
+
+config EF_WRITE_GRAN_8
+    bool "8 bit (STM32F4)"
+    help
+      Use 8-bit write granularity for STM32F4 internal flash.
+
+config EF_WRITE_GRAN_32
+    bool "32 bit (STM32F1)"
+    help
+      Use 32-bit write granularity for STM32F1 internal flash.
+
+endchoice
+
+config EF_WRITE_GRAN
+    int
+    default 1 if EF_WRITE_GRAN_1
+    default 8 if EF_WRITE_GRAN_8
+    default 32 if EF_WRITE_GRAN_32
+
+config EF_ERASE_MIN_SIZE
+    hex "Flash erase minimum size"
+    default 0x1000
+    help
+      Minimum flash erase size, typically the sector size.
+      Default: 0x1000 (4KB)
+
+config USING_EXTERNAL_CRC32
+    bool "Use external CRC32 implementation"
+    default y
+    help
+      Enable this to use the external CRC32 module instead
+      of the built-in EasyFlash CRC32 computation.
+
+config USING_DEBUG
+    bool "Enable the debug print"
+    default n

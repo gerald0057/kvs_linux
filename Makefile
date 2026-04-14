@@ -1,44 +1,85 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -I easyflash/inc -I inc -I crc
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c99 -Wno-unused-parameter -Wno-type-limits
 LDFLAGS =
 
-EF_SRC = easyflash/src
-EF_PORT = easyflash/port
-CRC_DIR = crc
+# Source and include directories
+SRC_DIRS   = easyflash/src easyflash/port crc
+INC_DIRS   = easyflash/inc inc crc
+BUILD_DIR  = build
+CONFIG_DIR = config
 
-EF_OBJS = \
-	$(EF_SRC)/easyflash.o \
-	$(EF_SRC)/ef_env.o \
-	$(EF_SRC)/ef_env_legacy.o \
-	$(EF_SRC)/ef_env_legacy_wl.o \
-	$(EF_SRC)/ef_iap.o \
-	$(EF_SRC)/ef_log.o \
-	$(EF_SRC)/ef_utils.o \
-	$(EF_PORT)/ef_port.o
+# Kconfig
+KCONFIG_CONFIG    = $(CONFIG_DIR)/.config
+KCONFIG_AUTOCONF  = inc/kvs_config.h
 
-CRC_OBJ = $(CRC_DIR)/crc32.o
+# Auto-discover source files
+SRCS_C  := $(shell find $(SRC_DIRS) -name '*.c' 2>/dev/null)
+OBJS    := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS_C))
+APP_OBJ := $(BUILD_DIR)/kvs_linux.o
 
-APP = kvs_linux
-APP_OBJ = easyflash_test.o
-APP_DEPS = easyflash/inc/ef_linux.h
+# Build flags
+INC_FLAGS := $(addprefix -I ,$(INC_DIRS))
+DEP_FLAGS  = -MMD -MP -MF $(@:.o=.d)
 
-.PHONY: all clean
+# External CRC32 flag (from kconfig)
+ifneq ($(wildcard $(KCONFIG_CONFIG)),)
+include $(KCONFIG_CONFIG)
+ifeq ($(CONFIG_USING_EXTERNAL_CRC32),y)
+CFLAGS += -DCONFIG_USING_EXTERNAL_CRC32
+endif
+endif
 
-all: $(APP)
+TARGET = kvs_linux
 
-$(CRC_DIR)/crc32.o: $(CRC_DIR)/crc32.c $(CRC_DIR)/crc.h
-	$(CC) $(CFLAGS) -DCONFIG_USING_EXTERNAL_CRC32 -c $< -o $@
+.PHONY: all clean config menuconfig defconfig savedefconfig
 
-$(EF_SRC)/%.o: $(EF_SRC)/%.c
-	$(CC) $(CFLAGS) -DCONFIG_USING_EXTERNAL_CRC32 -c $< -o $@
+all: config_check $(BUILD_DIR) $(KCONFIG_AUTOCONF) $(TARGET)
 
-$(EF_PORT)/%.o: $(EF_PORT)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# --- Kconfig rules ---
 
-$(APP): $(APP_OBJ) $(EF_OBJS) $(CRC_OBJ)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+config_check:
+	@if [ ! -f $(KCONFIG_CONFIG) ]; then \
+		echo "No configuration found. Running 'make defconfig'..."; \
+		$(MAKE) --no-print-directory defconfig; \
+	fi
 
-$(APP_OBJ): $(APP_DEPS)
+defconfig:
+	@mkdir -p $(CONFIG_DIR)
+	python3 -c "from kconfiglib import Kconfig; kconf = Kconfig('Kconfig'); kconf.write_config('$(KCONFIG_CONFIG)')"
+	KCONFIG_CONFIG=$(KCONFIG_CONFIG) genconfig --header-path $(KCONFIG_AUTOCONF)
+
+menuconfig:
+	@mkdir -p $(CONFIG_DIR)
+	KCONFIG_CONFIG=$(KCONFIG_CONFIG) menuconfig Kconfig
+	KCONFIG_CONFIG=$(KCONFIG_CONFIG) genconfig --header-path $(KCONFIG_AUTOCONF)
+
+savedefconfig:
+	KCONFIG_CONFIG=$(KCONFIG_CONFIG) savedefconfig --kconfig Kconfig --out $(CONFIG_DIR)/defconfig
+
+$(KCONFIG_AUTOCONF): $(KCONFIG_CONFIG) Kconfig
+	KCONFIG_CONFIG=$(KCONFIG_CONFIG) genconfig --header-path $(KCONFIG_AUTOCONF)
+
+config:
+	@cat $(KCONFIG_CONFIG) 2>/dev/null || echo "No .config found. Run 'make menuconfig'."
+
+# --- Build rules ---
+
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
+	@for d in $(SRC_DIRS); do mkdir -p $(BUILD_DIR)/$$d; done
+
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(INC_FLAGS) $(DEP_FLAGS) -c $< -o $@
+
+$(TARGET): $(APP_OBJ) $(OBJS) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(INC_FLAGS) $^ -o $@ $(LDFLAGS)
+
+$(APP_OBJ): kvs_linux.c $(KCONFIG_AUTOCONF) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(INC_FLAGS) $(DEP_FLAGS) -c $< -o $@
+
+# Include auto-generated dependencies
+-include $(OBJS:%.o=%.d) $(APP_OBJ:%.o=%.d)
 
 clean:
-	rm -f $(EF_OBJS) $(CRC_OBJ) $(APP_OBJ) $(APP)
+	@rm -rf $(BUILD_DIR) cache
+	@find . -name "*.o" -delete 2>/dev/null || true

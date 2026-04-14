@@ -8,15 +8,20 @@
 #include <easyflash.h>
 #include <stdarg.h>
 
-#define ef_port_err(fmt, args...) printf("[EF-LINUX ERROR] " fmt, ##args)
+#ifdef PRINT_DEBUG
 #define ef_port_debug(fmt, args...) printf("[EF-LINUX DBG] " fmt, ##args)
+#define ef_port_err(fmt, args...) printf("[EF-LINUX ERROR] " fmt, ##args)
+#else
+#define ef_port_debug(...)
+#define ef_port_err(...)
+#endif
 
 static uint8_t *g_flash_ram = NULL;
 static size_t g_flash_size = 0;
 
 static int ef_linux_init(void)
 {
-    FILE *fp = fopen("ef.disk", "rb");
+    FILE *fp = fopen("cache/ef.disk", "rb");
     if (fp == NULL)
     {
         ef_port_err("Failed to open rf disk\n");
@@ -47,6 +52,28 @@ static int ef_linux_init(void)
     }
 
     ef_port_debug("Loaded %zu bytes into RAM for flash simulation\n", g_flash_size);
+    return 0;
+}
+
+static int ef_linux_wr_fd(void)
+{
+    FILE *fp = fopen("cache/ef.disk", "wb");
+    if (fp == NULL)
+    {
+        ef_port_err("Failed to open rf disk for writing\n");
+        return -1;
+    }
+
+    size_t write_size = fwrite(g_flash_ram, 1, g_flash_size, fp);
+    fclose(fp);
+
+    if (write_size != g_flash_size)
+    {
+        ef_port_err("Failed to write full flash RAM to disk: expected %zu, got %zu\n", g_flash_size, write_size);
+        return -1;
+    }
+
+    ef_port_debug("Saved %zu bytes from RAM back to disk\n", g_flash_size);
     return 0;
 }
 
@@ -91,6 +118,16 @@ EfErrCode ef_port_erase(uint32_t addr, size_t size)
 {
     ef_port_debug("Erase called: addr=0x%x size=%zu\n", addr, size);
 
+    if ((addr < EF_START_ADDR) || (addr >= (EF_START_ADDR + ENV_AREA_SIZE)))
+    {
+        return EF_NO_ERR;
+    }
+
+    if ((addr + size) > (EF_START_ADDR + ENV_AREA_SIZE))
+    {
+        size = EF_START_ADDR + ENV_AREA_SIZE - addr;
+    }
+
     memset(g_flash_ram + addr, 0xFF, size);
 
     return EF_NO_ERR;
@@ -113,7 +150,7 @@ EfErrCode ef_port_write(uint32_t addr, const uint32_t *buf, size_t size)
 
     memcpy(g_flash_ram + addr, buf, size);
 
-    return EF_WRITE_ERR;
+    return ef_linux_wr_fd() == 0 ? EF_NO_ERR : EF_WRITE_ERR;
 }
 
 void ef_port_env_lock(void)

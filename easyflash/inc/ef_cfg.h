@@ -54,11 +54,11 @@
 /* #define EF_USING_LOG */
 
 /* The minimum size of flash erasure. May be a flash sector size. */
-#define EF_ERASE_MIN_SIZE         (0x1000)/* @note you must define it for a value */
+#define EF_ERASE_MIN_SIZE         CONFIG_EF_ERASE_MIN_SIZE
 
 /* the flash write granularity, unit: bit
  * only support 1(nor flash)/ 8(stm32f4)/ 32(stm32f1) */
-#define EF_WRITE_GRAN             (1)/* @note you must define it for a value */
+#define EF_WRITE_GRAN             CONFIG_EF_WRITE_GRAN
 
 /*
  *
@@ -91,6 +91,8 @@
 #define LOG_AREA_SIZE             (0x1000)/* @note you must define it for a value if you used log */
 
 /* print debug information of flash */
-// #define PRINT_DEBUG
+#if defined(CONFIG_USING_DEBUG) && CONFIG_USING_DEBUG > 0
+#define PRINT_DEBUG
+#endif
 
 #endif /* EF_CFG_H_ */

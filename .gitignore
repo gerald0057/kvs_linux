@@ -1,6 +1,6 @@
 # Build output
 *.o
-easyflash_test
+kvs_linux
 
 # EasyFlash build
 easyflash/src/*.o
@@ -11,3 +11,14 @@ easyflash/port/*.o
 .idea/
 *.swp
 *~
+
+# Runtime cache
+cache/
+
+# Build directory
+build/
+
+# Auto-generated config
+inc/kvs_config.h
+config/.config
+config/.config.old
