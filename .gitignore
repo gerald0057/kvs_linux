@@ -1,0 +1,13 @@
+# Build output
+*.o
+easyflash_test
+
+# EasyFlash build
+easyflash/src/*.o
+easyflash/port/*.o
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*~
