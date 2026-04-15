@@ -1,6 +1,8 @@
 #ifndef __CRC_H__
 #define __CRC_H__
 
+#include <kvs_config.h>
+
 #if defined(CONFIG_USING_EXTERNAL_CRC32)
 unsigned int crc32(unsigned int crc, const void *buf, unsigned int size);
 #else

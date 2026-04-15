@@ -1,6 +1,6 @@
-#if defined(CONFIG_USING_EXTERNAL_CRC32)
-
 #include <crc.h>
+
+#if defined(CONFIG_USING_EXTERNAL_CRC32)
 
 static const unsigned int crc32_table[] =
 {
